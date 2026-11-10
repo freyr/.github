@@ -486,7 +486,17 @@ def release_candidates(packages: list[Package], before: str, after: str) -> list
     return result
 
 
-def do_release(packages: list[Package], before: str, after: str, dry_run: bool, single_title: bool) -> list[dict]:
+def do_release(
+    packages: list[Package],
+    before: str,
+    after: str,
+    dry_run: bool,
+    single_title: bool,
+    github_release: bool = True,
+) -> list[dict]:
+    """Tag each releasing package. The annotated tag message holds the title and the notes,
+    so a repo that builds its own GitHub release (``github_release=False``) can read them with
+    ``git tag -l --format='%(contents)' <tag>``."""
     by_name = {p.name: p for p in packages}
     out = []
     for candidate in release_candidates(packages, before, after):
@@ -499,8 +509,10 @@ def do_release(packages: list[Package], before: str, after: str, dry_run: bool, 
             continue
         if git("tag", "--list", item["tag"]).strip():
             raise ReleaseError(f"the tag {item['tag']} already exists")
-        git("tag", "-a", item["tag"], "-m", item["tag"], after)
+        git("tag", "-a", item["tag"], "-m", f"{title}\n\n{notes}", "--cleanup=verbatim", after)
         git("push", "origin", f"refs/tags/{item['tag']}")
+        if not github_release:
+            continue
         with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as fh:
             fh.write(notes)
             notes_file = fh.name
@@ -559,6 +571,11 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--before", default=os.environ.get("BEFORE_SHA", ""))
     r.add_argument("--after", default="HEAD")
     r.add_argument("--dry-run", action="store_true")
+    r.add_argument(
+        "--no-github-release",
+        action="store_true",
+        help="push only the tags; a tag workflow of the repo creates the GitHub release",
+    )
 
     args = ap.parse_args(argv)
     try:
@@ -591,7 +608,9 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.cmd == "release":
             single = len(packages) == 1
-            released = do_release(packages, args.before, args.after, args.dry_run, single)
+            released = do_release(
+                packages, args.before, args.after, args.dry_run, single, github_release=not args.no_github_release
+            )
             public = [{k: v for k, v in x.items() if k != "notes"} for x in released]
             _output("releases", json.dumps(public))
             _output("released", "true" if released else "false")

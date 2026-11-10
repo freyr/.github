@@ -237,6 +237,27 @@ class ReleaseTests(unittest.TestCase):
         fourth = self.repo.commit("docs: readme (#3)")
         self.assertEqual(fr.release_candidates(packages, third, fourth), [])
 
+    def test_tag_only_release_puts_notes_in_the_tag(self):
+        bare = Path(self.repo.tmp.name + "-remote.git")
+        sh("git", "init", "-q", "--bare", str(bare), cwd=self.repo.path)
+        sh("git", "remote", "add", "origin", str(bare), cwd=self.repo.path)
+        cfg = {"packages": [{"name": "agent", "path": ".", "tag": "v{version}", "initial": "0.1.0"}]}
+        self.repo.write(".github/release.json", json.dumps(cfg))
+        first = self.repo.commit("chore: init")
+        self.repo.write("src/a.rs", "a")
+        second = self.repo.commit("feat: a thing (#1)")
+        out = fr.do_release(fr.load_config(".github/release.json"), first, second, False, True, github_release=False)
+        self.assertEqual(out[0]["tag"], "v0.1.0")
+        message = subprocess.run(
+            ["git", "tag", "-l", "--format=%(contents)", "v0.1.0"], check=True, capture_output=True, text=True
+        ).stdout
+        self.assertTrue(message.startswith("v0.1.0\n\n## Features"))
+        remote_tags = subprocess.run(
+            ["git", "ls-remote", "--tags", str(bare)], check=True, capture_output=True, text=True
+        ).stdout
+        self.assertIn("refs/tags/v0.1.0", remote_tags)
+        subprocess.run(["rm", "-rf", str(bare)], check=True)
+
     def test_disagreeing_version_files_fail(self):
         cfg = {
             "packages": [

@@ -18,6 +18,12 @@ inputs:
     description: "'true' to only print the releases."
     required: false
     default: "false"
+  github-release:
+    description: >-
+      'false' to push only the tags. Use it when a tag workflow of the repo builds the assets and
+      creates the GitHub release itself. The annotated tag message holds the title and the notes.
+    required: false
+    default: "true"
 outputs:
   releases:
     description: 'JSON list of {name, version, tag, previous_tag, title}.'
@@ -52,6 +58,7 @@ runs:
         BEFORE_SHA: ${{ github.event.before }}
         CONFIG: ${{ inputs.config }}
         DRY_RUN: ${{ inputs.dry-run }}
+        GITHUB_RELEASE: ${{ inputs.github-release }}
         TOOL: ${{ github.action_path }}/../../scripts/freyr_release.py
       run: |
         set -euo pipefail
@@ -63,4 +70,5 @@ runs:
         export GIT_CONFIG_KEY_2="user.email" GIT_CONFIG_VALUE_2="release@freyr.invalid"
         args=(--config "$CONFIG" release --after "$GITHUB_SHA")
         if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+        if [ "$GITHUB_RELEASE" = "false" ]; then args+=(--no-github-release); fi
         python3 -I "$TOOL" "${args[@]}"
