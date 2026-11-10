@@ -4,7 +4,7 @@ description: >-
   job passes, so a path filter or a condition never blocks a merge.
 inputs:
   results:
-    description: "The results of the needed jobs: `${{ join(needs.*.result, ' ') }}`."
+    description: "The results of the needed jobs, separated by spaces (the expression join(needs.*.result, ' '))."
     required: true
 runs:
   using: composite

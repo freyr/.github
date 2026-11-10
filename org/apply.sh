@@ -2,8 +2,8 @@
 # Apply the freyr organization standard with gh (needs the admin:org scope).
 #   org/apply.sh repos      repo merge settings + security settings, all repos
 #   org/apply.sh org        organization Actions + security defaults
-#   org/apply.sh rulesets   create or update the org rulesets (main starts in evaluate mode)
-#   org/apply.sh activate   set the ruleset "main" to active
+#   org/apply.sh rulesets   create or update the org rulesets (both start in evaluate mode)
+#   org/apply.sh activate   set the rulesets "main" and "release-tags" to active
 # Environment: ORG (default freyr), RELEASE_APP_ID (for the tag ruleset bypass).
 set -euo pipefail
 ORG=${ORG:-freyr}
@@ -65,9 +65,11 @@ case "${1:-}" in
   org) apply_org ;;
   rulesets) for f in "$here"/rulesets/*.json; do upsert_ruleset "$f"; done ;;
   activate)
-    id=$(gh api "orgs/$ORG/rulesets" --jq '.[] | select(.name == "main") | .id')
-    gh api -X PUT "orgs/$ORG/rulesets/$id" --silent -f enforcement=active
-    echo "ruleset main is active"
+    for name in main release-tags; do
+      id=$(gh api "orgs/$ORG/rulesets" --jq ".[] | select(.name == \"$name\") | .id")
+      gh api -X PUT "orgs/$ORG/rulesets/$id" --silent -f enforcement=active
+      echo "ruleset $name is active"
+    done
     ;;
   *)
     sed -n '2,7p' "$0"
