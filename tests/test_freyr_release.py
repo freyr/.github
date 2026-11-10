@@ -126,6 +126,24 @@ class VersionFileTests(unittest.TestCase):
         self.assertIn('name = "aaa"\nversion = "0.3.1"', lock)
         self.assertIn('name = "pc-agent"\nversion = "0.4.0"', lock)
 
+    def test_pyproject_updates_uv_lock(self):
+        self.repo.write("pyproject.toml", '[project]\nname = "Ragnarok_MCP"\nversion = "2.1.1"\n')
+        self.repo.write(
+            "uv.lock",
+            'version = 1\n\n[[package]]\nname = "mcp"\nversion = "2.1.1"\n\n'
+            '[[package]]\nname = "ragnarok-mcp"\nversion = "2.1.1"\nsource = { editable = "." }\n',
+        )
+        touched = fr.VersionFile("pyproject.toml", "pyproject").write("2.2.0")
+        self.assertEqual(sorted(touched), ["pyproject.toml", "uv.lock"])
+        lock = Path("uv.lock").read_text()
+        self.assertIn('name = "mcp"\nversion = "2.1.1"', lock)
+        self.assertIn('name = "ragnarok-mcp"\nversion = "2.2.0"', lock)
+        pkg = fr.Package.from_dict(
+            {"name": "s", "tag": "v{version}", "version_files": [{"file": "pyproject.toml", "format": "pyproject"}]}
+        )
+        self.assertFalse(pkg.owns("uv.lock"))
+        self.assertTrue(pkg.owns("src/a.py"))
+
     def test_json_nested_key_keeps_indent(self):
         self.repo.write("server.json", '{\n    "version": "2.1.1",\n    "packages": [{"version": "2.1.1"}]\n}\n')
         fr.VersionFile("server.json", "json", "packages.0.version").write("2.2.0")

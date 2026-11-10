@@ -217,19 +217,30 @@ class VersionFile:
             Path(self.file).write_text(new)
             touched.append(self.file)
         if self.format == "cargo":
-            touched += _write_cargo_lock(Path(self.file), new, version)
+            touched += _write_lock(Path(self.file), new, version, "package", "Cargo.lock")
+        if self.format == "pyproject":
+            touched += _write_lock(Path(self.file), new, version, "project", "uv.lock")
         return touched
 
 
-def _write_cargo_lock(cargo_toml: Path, toml_text: str, version: str) -> list[str]:
-    lock = cargo_toml.with_name("Cargo.lock")
+LOCK_FILES = {"cargo": "Cargo.lock", "pyproject": "uv.lock"}
+
+
+def _write_lock(manifest: Path, toml_text: str, version: str, section: str, lock_name: str) -> list[str]:
+    """Set the version of the project's own entry in the lock file next to the manifest."""
+    lock = manifest.with_name(lock_name)
     if not lock.exists():
         return []
-    m = re.search(r"^\[package\][ \t]*\n(?:(?!^\[).)*?^name\s*=\s*\"([^\"]+)\"", toml_text, re.MULTILINE | re.DOTALL)
+    m = re.search(
+        r"^\[" + section + r"\][ \t]*\n(?:(?!^\[).)*?^name\s*=\s*\"([^\"]+)\"", toml_text, re.MULTILINE | re.DOTALL
+    )
     if not m:
         return []
+    name = m[1]
+    if lock_name == "uv.lock":
+        name = re.sub(r"[-_.]+", "-", name).lower()  # uv writes the normalized name
     text = lock.read_text()
-    pattern = re.compile(r"(\[\[package\]\]\nname = \"" + re.escape(m[1]) + r"\"\nversion = \")([^\"]+)(\")")
+    pattern = re.compile(r"(\[\[package\]\]\nname = \"" + re.escape(name) + r"\"\nversion = \")([^\"]+)(\")")
     new = pattern.sub(lambda x: x[1] + version + x[3], text, count=1)
     if new == text:
         return []
@@ -287,7 +298,10 @@ class Package:
             return False
         if any(fnmatch.fnmatch(path, pattern) for pattern in self.ignore):
             return False
-        return path != "Cargo.lock" or not any(vf.format == "cargo" for vf in self.version_files)
+        own_locks = {
+            str(Path(vf.file).with_name(LOCK_FILES[vf.format])) for vf in self.version_files if vf.format in LOCK_FILES
+        }
+        return path not in own_locks
 
     def tag_for(self, version: str) -> str:
         return self.tag.format(version=version)

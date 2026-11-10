@@ -54,7 +54,7 @@ Only the packages with changed files get the change. A package with `"min_bump":
 | `path` | folder of the package; `.` is the whole repo | `.` |
 | `tag` | tag form, with `{version}` | `v{version}` |
 | `legacy_tags` | older tag forms, read for the last version | `[]` |
-| `version_files` | `{file, format, key}`; formats `json` (dot key, list index as number), `pyproject`, `cargo` (also `Cargo.lock`) | `[]` (tag only) |
+| `version_files` | `{file, format, key}`; formats `json` (dot key, list index as number), `pyproject` (also `uv.lock`), `cargo` (also `Cargo.lock`) | `[]` (tag only) |
 | `ignore` | globs that are not a change of the package | `[]` |
 | `min_bump` | minimum change when a file of the package changes | `none` |
 | `initial` | first version when no tag and no version file exist | `0.1.0` |
