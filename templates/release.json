@@ -1,0 +1,15 @@
+{
+  "packages": [
+    {
+      "name": "example",
+      "path": ".",
+      "tag": "v{version}",
+      "version_files": [
+        { "file": "Cargo.toml", "format": "cargo" }
+      ],
+      "ignore": ["tests/**", "README.md", "docs/**"],
+      "min_bump": "none",
+      "initial": "1.0.0"
+    }
+  ]
+}

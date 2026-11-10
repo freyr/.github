@@ -1,0 +1,25 @@
+# Copy to .github/dependabot.yml and add the package ecosystem of the repo.
+# The commit prefixes keep the PR titles valid for the pr-title check.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+  # - package-ecosystem: cargo | pip | uv | composer | npm
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   groups:
+  #     dependencies:
+  #       patterns: ["*"]
+  #   commit-message:
+  #     prefix: build
+  #     include: scope

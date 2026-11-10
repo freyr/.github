@@ -1,0 +1,23 @@
+name: freyr ci-gate
+description: >-
+  The one required CI check. Fails when a needed job failed or was cancelled. A skipped
+  job passes, so a path filter or a condition never blocks a merge.
+inputs:
+  results:
+    description: "The results of the needed jobs, separated by spaces (the expression join(needs.*.result, ' '))."
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Check the results of the needed jobs
+      shell: bash
+      env:
+        RESULTS: ${{ inputs.results }}
+      run: |
+        echo "Results: $RESULTS"
+        for r in $RESULTS; do
+          case "$r" in
+            success|skipped) ;;
+            *) echo "::error::A needed job ended with '$r'."; exit 1 ;;
+          esac
+        done

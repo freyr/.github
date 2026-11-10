@@ -1,0 +1,12 @@
+{
+  "name": "freyr-release",
+  "url": "https://github.com/freyr/.github",
+  "hook_attributes": { "active": false },
+  "public": false,
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "read",
+    "metadata": "read"
+  },
+  "default_events": []
+}
