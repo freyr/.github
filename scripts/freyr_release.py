@@ -310,6 +310,10 @@ class Package:
                     found.setdefault(m[1], tag)
         return found
 
+    def tags_at(self, rev: str) -> list[str]:
+        """The tags of this package that point at ``rev``."""
+        return [t for t in git("tag", "--points-at", rev).split() if any(rx.match(t) for rx in self._tag_res())]
+
     def last_tag(self, merged: str | None = None) -> tuple[str, str] | None:
         tagged = self.tagged_versions(merged)
         if not tagged:
@@ -461,6 +465,8 @@ def release_candidates(packages: list[Package], before: str, after: str) -> list
                     }
                 )
             continue
+        if pkg.tags_at(after):
+            continue  # a repeated run on a released commit
         level = "none"
         for sha in commits:
             subject, body = commit_message(sha)

@@ -229,6 +229,7 @@ class ReleaseTests(unittest.TestCase):
         second = self.repo.commit("feat: a page (#1)")
         self.assertEqual(fr.release_candidates(packages, first, second)[0]["tag"], "v1.0.0")
         self.repo.tag("v1.0.0")
+        self.assertEqual(fr.release_candidates(packages, first, second), [])  # a repeated run
         self.repo.write("content/a.md", "b")
         third = self.repo.commit("fix: typo (#2)")
         self.assertEqual(fr.release_candidates(packages, second, third)[0]["tag"], "v1.0.1")
