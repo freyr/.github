@@ -1,0 +1,17 @@
+{
+  "name": "release-tags",
+  "target": "tag",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": { "include": ["refs/tags/v*", "refs/tags/*-v*"], "exclude": [] },
+    "repository_name": { "include": ["~ALL"], "exclude": [], "protected": false }
+  },
+  "bypass_actors": [
+    { "actor_id": "RELEASE_APP_ID", "actor_type": "Integration", "bypass_mode": "always" }
+  ],
+  "rules": [
+    { "type": "creation" },
+    { "type": "update" },
+    { "type": "deletion" }
+  ]
+}
