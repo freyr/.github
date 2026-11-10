@@ -1,7 +1,9 @@
 name: freyr version
 description: >-
   Compute the next version of each changed package from the PR title, and commit the
-  version files to the PR branch. Succeeds when the version files are correct. Fails
+  version files to the PR branch. Succeeds only when the version files are already
+  correct. When it pushes a version commit it fails on purpose: the old head must never
+  show a green check, and the checks on the new commit decide the merge. Also fails
   when a change is needed but no release App is configured.
 inputs:
   app-id:
@@ -70,6 +72,7 @@ runs:
         GH_TOKEN: ${{ steps.token.outputs.token }}
         APP_SLUG: ${{ steps.token.outputs.app-slug }}
         HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
         PLAN: ${{ steps.plan.outputs.plan }}
         FILES: ${{ steps.plan.outputs.files }}
@@ -90,8 +93,14 @@ runs:
         git add -- "${files[@]}"
         git commit -m "$message"
         basic=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+        # The lease: the push goes through only while the branch still points at the
+        # head this run checked. A merged (deleted) or moved branch rejects it, so the
+        # push never creates a stray branch or races a newer commit.
         GIT_CONFIG_COUNT=1 \
         GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
         GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${basic}" \
-          git push "https://github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+          git push --force-with-lease="refs/heads/${HEAD_REF}:${HEAD_SHA}" \
+            "https://github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
         echo "Pushed '$message'. The checks run again on the new commit." >>"$GITHUB_STEP_SUMMARY"
+        echo "::error::Pushed '$message' to the PR branch. This head is out of date; the checks on the new commit decide the merge."
+        exit 1

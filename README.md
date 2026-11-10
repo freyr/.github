@@ -18,7 +18,10 @@ flowchart LR
 - All changes to a branch go through a PR. The ruleset of `main` has no bypass.
 - The PR title is the squash commit title and the only release input.
 - The version job computes the next version of each changed package and commits the
-  version files to the PR branch. `main` always holds the version of the last release.
+  version files to the PR branch. A run that pushes a version commit fails on purpose,
+  so only the new commit can get a green `version` check. The push holds a lease on the
+  PR head, so a merged or moved branch rejects it. `main` always holds the version of
+  the last release. Auto-merge waits for checks only while the ruleset `main` is active.
 - The release job on `main` pushes only tags and creates GitHub releases. It never
   commits. The release App pushes the tags, so tag workflows start.
 
