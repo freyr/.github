@@ -1,0 +1,11 @@
+# Add this job to the CI workflow of the repo. List every other CI job in `needs`.
+# The CI workflow must run on `pull_request` and on `push` to `main`, with no path filter
+# on the workflow itself (use job conditions instead).
+  ci-gate:
+    if: always()
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: freyr/.github/actions/ci-gate@FREYR_SHA # vX.Y.Z
+        with:
+          results: ${{ join(needs.*.result, ' ') }}

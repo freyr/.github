@@ -1,0 +1,9 @@
+line-length = 120
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF", "PLW"]
+ignore = ["S603", "S607"]  # the tool runs git and gh by design
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "S108", "E501"]

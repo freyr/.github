@@ -1,0 +1,11 @@
+{
+  "packages": [
+    {
+      "name": ".github",
+      "path": ".",
+      "tag": "v{version}",
+      "ignore": ["tests/**", "README.md"],
+      "initial": "1.0.0"
+    }
+  ]
+}

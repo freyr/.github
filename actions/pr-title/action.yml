@@ -1,0 +1,11 @@
+name: freyr pr-title
+description: Check that the PR title follows Conventional Commits. The title is the squash commit title and the release input.
+runs:
+  using: composite
+  steps:
+    - name: Check the PR title
+      shell: bash
+      env:
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        TOOL: ${{ github.action_path }}/../../scripts/freyr_release.py
+      run: python3 -I "$TOOL" title

@@ -1,0 +1,28 @@
+# Copy to .github/workflows/pr.yml. Replace FREYR_SHA with the commit of freyr/.github
+# (Dependabot keeps it current). Required checks: pr-title, version, ci-gate.
+name: PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: freyr/.github/actions/pr-title@FREYR_SHA # vX.Y.Z
+
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: freyr/.github/actions/version@FREYR_SHA # vX.Y.Z
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}

@@ -1,0 +1,66 @@
+name: freyr release
+description: >-
+  On a push to main, create the tag and the GitHub release of each package whose version
+  changed (or, for a package with no version file, whose commits ask for a release).
+  Pushes no commit.
+inputs:
+  app-id:
+    description: ID of the release GitHub App. Its tag push starts the tag workflows.
+    required: true
+  private-key:
+    description: Private key of the release GitHub App.
+    required: true
+  config:
+    description: Path of the release configuration.
+    required: false
+    default: .github/release.json
+  dry-run:
+    description: "'true' to only print the releases."
+    required: false
+    default: "false"
+outputs:
+  releases:
+    description: 'JSON list of {name, version, tag, previous_tag, title}.'
+    value: ${{ steps.release.outputs.releases }}
+  released:
+    description: "'true' when at least one release was created."
+    value: ${{ steps.release.outputs.released }}
+runs:
+  using: composite
+  steps:
+    - name: Get the release App token
+      id: token
+      uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        repositories: ${{ github.event.repository.name }}
+        permission-contents: write
+
+    - name: Check out main
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: Create the tags and the releases
+      id: release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ steps.token.outputs.token }}
+        BEFORE_SHA: ${{ github.event.before }}
+        CONFIG: ${{ inputs.config }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        TOOL: ${{ github.action_path }}/../../scripts/freyr_release.py
+      run: |
+        set -euo pipefail
+        basic=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+        export GIT_CONFIG_COUNT=3
+        export GIT_CONFIG_KEY_0="http.https://github.com/.extraheader"
+        export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${basic}"
+        export GIT_CONFIG_KEY_1="user.name" GIT_CONFIG_VALUE_1="freyr-release"
+        export GIT_CONFIG_KEY_2="user.email" GIT_CONFIG_VALUE_2="release@freyr.invalid"
+        args=(--config "$CONFIG" release --after "$GITHUB_SHA")
+        if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+        python3 -I "$TOOL" "${args[@]}"

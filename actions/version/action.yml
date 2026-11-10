@@ -1,0 +1,97 @@
+name: freyr version
+description: >-
+  Compute the next version of each changed package from the PR title, and commit the
+  version files to the PR branch. Succeeds when the version files are correct. Fails
+  when a change is needed but no release App is configured.
+inputs:
+  app-id:
+    description: ID of the release GitHub App (needed to push the version commit).
+    required: false
+    default: ""
+  private-key:
+    description: Private key of the release GitHub App.
+    required: false
+    default: ""
+  config:
+    description: Path of the release configuration.
+    required: false
+    default: .github/release.json
+outputs:
+  plan:
+    description: JSON list of the planned package versions.
+    value: ${{ steps.plan.outputs.plan }}
+  changed:
+    description: "'true' when this run pushed a version commit."
+    value: ${{ steps.plan.outputs.changed }}
+runs:
+  using: composite
+  steps:
+    - name: Check out the PR branch
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: Plan and write the versions
+      id: plan
+      shell: bash
+      env:
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        PR_BODY: ${{ github.event.pull_request.body }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        CONFIG: ${{ inputs.config }}
+        TOOL: ${{ github.action_path }}/../../scripts/freyr_release.py
+      run: python3 -I "$TOOL" --config "$CONFIG" apply --base "$BASE_SHA"
+
+    - name: Stop when a version commit is needed but no App is configured
+      if: steps.plan.outputs.changed == 'true' && inputs.app-id == ''
+      shell: bash
+      env:
+        FILES: ${{ steps.plan.outputs.files }}
+      run: |
+        echo "::error::The version files must change, but the release App is not configured. Files: ${FILES//$'\n'/, }"
+        exit 1
+
+    - name: Get the release App token
+      if: steps.plan.outputs.changed == 'true' && inputs.app-id != ''
+      id: token
+      uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        repositories: ${{ github.event.repository.name }}
+        permission-contents: write
+
+    - name: Commit and push the version files
+      if: steps.plan.outputs.changed == 'true' && inputs.app-id != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ steps.token.outputs.token }}
+        APP_SLUG: ${{ steps.token.outputs.app-slug }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        PLAN: ${{ steps.plan.outputs.plan }}
+        FILES: ${{ steps.plan.outputs.files }}
+      run: |
+        set -euo pipefail
+        if [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+          echo "::error::The PR comes from a fork ($HEAD_REPO). Set the version files by hand."
+          exit 1
+        fi
+        user_id=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+        git config user.name "${APP_SLUG}[bot]"
+        git config user.email "${user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+        message=$(jq -r '[.[] | select(.release) | "\(.name) \(.to)"] | "chore: set version " + join(", ")' <<<"$PLAN")
+        if [ "$message" = "chore: set version " ]; then
+          message="chore: reset version files"
+        fi
+        mapfile -t files <<<"$FILES"
+        git add -- "${files[@]}"
+        git commit -m "$message"
+        basic=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+        GIT_CONFIG_COUNT=1 \
+        GIT_CONFIG_KEY_0="http.https://github.com/.extraheader" \
+        GIT_CONFIG_VALUE_0="AUTHORIZATION: basic ${basic}" \
+          git push "https://github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${HEAD_REF}"
+        echo "Pushed '$message'. The checks run again on the new commit." >>"$GITHUB_STEP_SUMMARY"

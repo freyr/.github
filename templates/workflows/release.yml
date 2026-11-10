@@ -1,0 +1,27 @@
+# Copy to .github/workflows/release.yml. Replace FREYR_SHA with the commit of freyr/.github.
+# The release App pushes the tags, so workflows on `push: tags:` start from them.
+# Alternative: add publish jobs here with `needs: release` and read `needs.release.outputs.releases`.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      releases: ${{ steps.release.outputs.releases }}
+    steps:
+      - id: release
+        uses: freyr/.github/actions/release@FREYR_SHA # vX.Y.Z
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
