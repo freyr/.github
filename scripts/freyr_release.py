@@ -72,10 +72,20 @@ def format_version(v: tuple[int, int, int]) -> str:
     return f"{v[0]}.{v[1]}.{v[2]}"
 
 
+def effective_level(version: str, level: str) -> str:
+    """Return the level that ``level`` means for ``version``.
+
+    Before 1.0.0 each level moves one step down: a breaking change is a minor
+    change, and a feature is a patch change. A patch change stays a patch change.
+    """
+    if parse_version(version)[0] == 0:
+        return {"major": "minor", "minor": "patch"}.get(level, level)
+    return level
+
+
 def bump(version: str, level: str) -> str:
     major, minor, patch = parse_version(version)
-    if level == "major" and major == 0:
-        level = "minor"  # semver: before 1.0.0 a breaking change is a minor change
+    level = effective_level(version, level)
     if level == "major":
         return format_version((major + 1, 0, 0))
     if level == "minor":
@@ -389,6 +399,7 @@ def plan(packages: list[Package], base: str, head: str, title: str, body: str) -
             target = pkg.initial
         else:
             target = bump(current, pkg_level)
+            pkg_level = effective_level(current, pkg_level)
         result.append(
             {
                 "name": pkg.name,
