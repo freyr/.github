@@ -27,12 +27,17 @@ flowchart LR
 
 ## Version rule
 
-| PR title | Change |
-|---|---|
-| `feat: …` | minor |
-| `fix: …`, `perf: …`, `revert: …` | patch |
-| `feat!: …`, or `BREAKING CHANGE:` in the PR body | major (minor before 1.0.0) |
-| `docs:`, `test:`, `ci:`, `build:`, `refactor:`, `chore:`, `style:` | none |
+| PR title | Change from 1.0.0 | Change before 1.0.0 |
+|---|---|---|
+| `feat!: …`, or `BREAKING CHANGE:` in the PR body | major | minor |
+| `feat: …` | minor | patch |
+| `fix: …`, `perf: …`, `revert: …` | patch | patch |
+| `docs:`, `test:`, `ci:`, `build:`, `refactor:`, `chore:`, `style:` | none | none |
+
+Before 1.0.0 each change moves one step down. A package that stays on 0.x thus gets a
+minor release only for a major change (`!` in the title, or `BREAKING CHANGE:` in the
+body), and a patch release for each smaller improvement or fix. Any type with `!`
+is such a change, for example `refactor!:`. The step down applies to `min_bump` too.
 
 Only the packages with changed files get the change. A package with `"min_bump": "patch"`
 (each Claude Code plugin) gets at least a patch when a shipped file changes.

@@ -90,6 +90,17 @@ class TitleTests(unittest.TestCase):
         self.assertEqual(fr.bump("1.2.3", "minor"), "1.3.0")
         self.assertEqual(fr.bump("1.2.3", "patch"), "1.2.4")
         self.assertEqual(fr.bump("0.7.1", "major"), "0.8.0")
+        self.assertEqual(fr.bump("0.7.1", "minor"), "0.7.2")
+        self.assertEqual(fr.bump("0.7.1", "patch"), "0.7.2")
+        self.assertEqual(fr.bump("0.7.1", "none"), "0.7.1")
+
+    def test_effective_level_before_and_from_1_0_0(self):
+        self.assertEqual(fr.effective_level("0.7.1", "major"), "minor")
+        self.assertEqual(fr.effective_level("0.7.1", "minor"), "patch")
+        self.assertEqual(fr.effective_level("0.7.1", "patch"), "patch")
+        self.assertEqual(fr.effective_level("0.7.1", "none"), "none")
+        for level in ("major", "minor", "patch", "none"):
+            self.assertEqual(fr.effective_level("1.0.0", level), level)
 
 
 class VersionFileTests(unittest.TestCase):
@@ -178,8 +189,17 @@ class PlanTests(unittest.TestCase):
         self.repo.write("plugins/sdlc/skills/a/SKILL.md", "b\n")
         self.repo.commit("wip")
         p = self.plan("feat(sdlc): new stage")
-        self.assertEqual((p["sdlc"]["level"], p["sdlc"]["to"], p["sdlc"]["tag"]), ("minor", "0.8.0", "sdlc--v0.8.0"))
+        # before 1.0.0 a feat title is a patch change
+        self.assertEqual((p["sdlc"]["level"], p["sdlc"]["to"], p["sdlc"]["tag"]), ("patch", "0.7.2", "sdlc--v0.7.2"))
         self.assertEqual((p["ha"]["level"], p["ha"]["to"]), ("none", "0.3.1"))
+
+    def test_breaking_feat_before_1_0_0_is_a_minor_change(self):
+        self.repo.write("plugins/sdlc/skills/a/SKILL.md", "b\n")
+        self.repo.commit("wip")
+        p = self.plan("feat(sdlc)!: replace a stage")
+        self.assertEqual((p["sdlc"]["level"], p["sdlc"]["to"], p["sdlc"]["tag"]), ("minor", "0.8.0", "sdlc--v0.8.0"))
+        p = self.plan("feat(sdlc): new stage", "BREAKING CHANGE: the stage has a new contract")
+        self.assertEqual((p["sdlc"]["level"], p["sdlc"]["to"]), ("minor", "0.8.0"))
 
     def test_docs_on_shipped_file_gives_min_patch(self):
         self.repo.write("plugins/ha/skills/a/SKILL.md", "b\n")
