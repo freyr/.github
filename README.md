@@ -12,6 +12,7 @@ flowchart LR
   V --> C{pr-title + version + ci-gate}
   C -- pass --> D[Auto-merge: squash]
   D --> E[release job on main:<br/>tag + GitHub release]
+  E --> P[packagist job:<br/>Composer packages only]
   E --> F[publish / deploy<br/>from the tag]
 ```
 
@@ -53,6 +54,22 @@ Only the packages with changed files get the change. A package with `"min_bump":
 4. Copy [`templates/dependabot.yml`](templates/dependabot.yml) and add the package
    ecosystem.
 5. Pin `freyr/.github/actions/*` to a commit SHA. Dependabot updates the SHA.
+6. For a Composer package on packagist.org: add the `packagist` job of
+   [`templates/packagist.yml`](templates/packagist.yml) to the release workflow, and
+   remove the Packagist webhook of the repo (see "Packagist").
+
+### Packagist
+
+Only the release workflow calls packagist.org. A repo has no Packagist webhook.
+
+- A webhook calls packagist.org on each push, and packagist.org then lists each PR
+  branch as a `dev-<branch>` version.
+- The `packagist` job runs after each push to `main`. It calls the update API of
+  packagist.org, which then reads the new tag and the head of `main` (`dev-main`).
+- packagist.org reads all branches of the repo at that time. Turn on the repo setting
+  "Automatically delete head branches", so that only `main` and the open PR branches exist.
+- The secret holds the SAFE API token of the packagist.org user; that token can only
+  start updates.
 
 ### `release.json`
 
@@ -73,6 +90,8 @@ Only the packages with changed files get the change. A package with `"min_bump":
 |---|---|
 | Variable `RELEASE_APP_ID` | ID of the release GitHub App |
 | Secret `RELEASE_APP_PRIVATE_KEY` | private key of the release GitHub App |
+| Variable `PACKAGIST_USERNAME` | packagist.org user name that maintains the Composer packages |
+| Secret `PACKAGIST_API_TOKEN` | SAFE API token of that packagist.org user |
 | Release App permissions | Contents: read and write; Pull requests: read; Metadata: read |
 | Ruleset `main` | default branch: PR with 0 approvals, squash only, linear history, threads resolved, required checks `pr-title`, `version`, `ci-gate`, up to date; no bypass |
 | Ruleset `release-tags` | tags `v*`, `*-v*`, `*--v*`: no create, update or delete; bypass: the release App |

@@ -1,0 +1,49 @@
+name: freyr packagist
+description: >-
+  Ask packagist.org to read the repo again, so that it lists the new tag and the head of
+  main. Call it from the Release workflow only. A repo that uses it has no Packagist
+  webhook, so a push to a PR branch never reaches packagist.org.
+inputs:
+  username:
+    description: The packagist.org user name that owns or maintains the package.
+    required: true
+  api-token:
+    description: An API token of that user. The SAFE token is enough for this call.
+    required: true
+  repository:
+    description: The repo URL as packagist.org knows it. The default is the URL of this repo.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Ask packagist.org to update the package
+      shell: bash
+      env:
+        PACKAGIST_USERNAME: ${{ inputs.username }}
+        PACKAGIST_API_TOKEN: ${{ inputs.api-token }}
+        REPOSITORY_INPUT: ${{ inputs.repository }}
+        DEFAULT_REPOSITORY: ${{ github.server_url }}/${{ github.repository }}
+      run: |
+        set -euo pipefail
+        if [ -z "$PACKAGIST_USERNAME" ] || [ -z "$PACKAGIST_API_TOKEN" ]; then
+          echo "::error::The inputs username and api-token must not be empty (variable PACKAGIST_USERNAME, secret PACKAGIST_API_TOKEN)."
+          exit 1
+        fi
+        repository="${REPOSITORY_INPUT:-$DEFAULT_REPOSITORY}"
+        body=$(python3 -I -c 'import json, sys; print(json.dumps({"repository": sys.argv[1]}))' "$repository")
+        response=$(mktemp)
+        # The header goes through stdin, so the token is not in the argument list of curl.
+        status=$(printf 'header = "Authorization: Bearer %s:%s"\n' "$PACKAGIST_USERNAME" "$PACKAGIST_API_TOKEN" |
+          curl --config - --silent --show-error --retry 3 --retry-all-errors --max-time 30 \
+            --output "$response" --write-out '%{http_code}' \
+            --request POST --header 'Content-Type: application/json' --data "$body" \
+            https://packagist.org/api/update-package)
+        echo "packagist.org answered HTTP ${status} for ${repository}:"
+        cat "$response"
+        echo
+        case "$status" in
+          2??) ;;
+          *) echo "::error::packagist.org did not accept the update (HTTP ${status})."; exit 1 ;;
+        esac
+        echo "packagist.org accepted the update of ${repository} (HTTP ${status})." >> "$GITHUB_STEP_SUMMARY"

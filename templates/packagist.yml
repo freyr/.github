@@ -1,0 +1,14 @@
+# For a Composer package on packagist.org: add this job to .github/workflows/release.yml.
+# It runs after each push to main, so packagist.org lists the new tag and the head of main.
+# The repo must have no Packagist webhook: this job is the only caller of packagist.org.
+# With a manual-release job in the workflow, use:
+#   needs: [release, manual-release]
+#   if: ${{ !cancelled() && (needs.release.result == 'success' || needs.manual-release.result == 'success') }}
+  packagist:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: freyr/.github/actions/packagist@FREYR_SHA # vX.Y.Z
+        with:
+          username: ${{ vars.PACKAGIST_USERNAME }}
+          api-token: ${{ secrets.PACKAGIST_API_TOKEN }}
