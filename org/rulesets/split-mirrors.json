@@ -1,0 +1,21 @@
+{
+  "name": "split-mirrors",
+  "target": "branch",
+  "enforcement": "evaluate",
+  "conditions": {
+    "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] },
+    "repository_name": {
+      "include": ["message-broker-storage-postgresql", "message-broker-transport-amqp", "message-broker-webhook-http", "message-broker-ratelimit-redis"],
+      "exclude": [],
+      "protected": false
+    }
+  },
+  "bypass_actors": [
+    { "actor_id": "RELEASE_APP_ID", "actor_type": "Integration", "bypass_mode": "always" }
+  ],
+  "rules": [
+    { "type": "update" },
+    { "type": "deletion" },
+    { "type": "non_fast_forward" }
+  ]
+}

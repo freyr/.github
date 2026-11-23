@@ -4,7 +4,11 @@
   "enforcement": "evaluate",
   "conditions": {
     "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] },
-    "repository_name": { "include": ["~ALL"], "exclude": [], "protected": false }
+    "repository_name": {
+      "include": ["~ALL"],
+      "exclude": ["message-broker-storage-postgresql", "message-broker-transport-amqp", "message-broker-webhook-http", "message-broker-ratelimit-redis"],
+      "protected": false
+    }
   },
   "bypass_actors": [],
   "rules": [
