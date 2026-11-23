@@ -3,7 +3,7 @@
 #   org/apply.sh repos      repo merge settings + security settings, all repos
 #   org/apply.sh org        organization Actions + security defaults
 #   org/apply.sh rulesets   create or update the org rulesets (both start in evaluate mode)
-#   org/apply.sh activate   set the rulesets "main" and "release-tags" to active
+#   org/apply.sh activate   set the rulesets "main", "release-tags" and "split-mirrors" to active
 # Environment: ORG (default freyr), RELEASE_APP_ID (for the tag ruleset bypass).
 set -euo pipefail
 ORG=${ORG:-freyr}
@@ -65,7 +65,7 @@ case "${1:-}" in
   org) apply_org ;;
   rulesets) for f in "$here"/rulesets/*.json; do upsert_ruleset "$f"; done ;;
   activate)
-    for name in main release-tags; do
+    for name in main release-tags split-mirrors; do
       id=$(gh api "orgs/$ORG/rulesets" --jq ".[] | select(.name == \"$name\") | .id")
       gh api -X PUT "orgs/$ORG/rulesets/$id" --silent -f enforcement=active
       echo "ruleset $name is active"

@@ -93,8 +93,9 @@ Only the release workflow calls packagist.org. A repo has no Packagist webhook.
 | Variable `PACKAGIST_USERNAME` | packagist.org user name that maintains the Composer packages |
 | Secret `PACKAGIST_API_TOKEN` | SAFE API token of that packagist.org user |
 | Release App permissions | Contents: read and write; Pull requests: read; Metadata: read |
-| Ruleset `main` | default branch: PR with 0 approvals, squash only, linear history, threads resolved, required checks `pr-title`, `version`, `ci-gate`, up to date; no bypass |
+| Ruleset `main` | default branch: PR with 0 approvals, squash only, linear history, threads resolved, required checks `pr-title`, `version`, `ci-gate`, up to date; no bypass; excludes the split mirrors |
 | Ruleset `release-tags` | tags `v*`, `*-v*`, `*--v*`: no create, update or delete; bypass: the release App |
+| Ruleset `split-mirrors` | default branch of the read-only split repos of `freyr/message-broker` (`message-broker-storage-postgresql`, `-transport-amqp`, `-webhook-http`, `-ratelimit-redis`): no update, delete or force push; bypass: the release App, whose split job mirrors each package folder |
 
 ## Local use
 
